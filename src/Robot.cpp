@@ -116,7 +116,7 @@ public:
 		printf("\n");
 
 		driveSystem.SetExpiration(0.1);
-		//printf("Matt Cassin, Kyle Ronsberg, Tyler Seiford, Tim (The Great) Larson, Adam the atom (Hamilton) and Jacob Ozel are Programmers!");
+		//printf("Matt Cassin is Awesome!");
 	}
 
 	float SignSquare(float f)
