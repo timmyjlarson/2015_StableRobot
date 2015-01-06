@@ -21,10 +21,10 @@ private:
 	};
 	enum PWM_OUT
 	{
-		PWM_TALON_RIGHT = 1,
-		PWM_TALON_LEFT,
-		PWM_EMPTY_3,
-		PWM_EMPTY_4,
+		PWM_TALON_RIGHT_FRONT = 1,
+		PWM_TALON_LEFT_FRONT,
+		PWM_TALON_RIGHT_REAR,
+		PWM_TALON_LEFT_REAR,
 		PWM_EMPTY_5,
 		PWM_EMPTY_6,
 		PWM_EMPTY_7,
@@ -43,7 +43,6 @@ private:
 		RELAY_EMPTY_7,
 		RELAY_EMPTY_8
 	};
-
 	enum DIO_PORTS
 	{
 		DIO_EMPTY_1 = 1,
@@ -78,6 +77,7 @@ private:
 	{
 		JOYSTICK_1 = 1,
 		JOYSTICK_2,
+		JOYSTICK_3
 	};
 
 	struct JoyStickState
@@ -97,16 +97,16 @@ private:
 	};
 
 	RobotDrive driveSystem;
-	Joystick driverStick;
-	Joystick controlStick;
+	Joystick driverStick, driverStick2, controlStick;
 
-	bool netConsoleEnabled;
+	const float SPIN_SPEED = 0.5;
 
 public:
 	Robot() :
-		driveSystem(PWM_TALON_RIGHT,PWM_TALON_LEFT),
+		driveSystem(PWM_TALON_RIGHT_FRONT,PWM_TALON_LEFT_FRONT,PWM_TALON_RIGHT_REAR,PWM_TALON_LEFT_REAR),
 		driverStick(JOYSTICK_1),
-		controlStick(JOYSTICK_2)
+		driverStick2(JOYSTICK_2),
+		controlStick(JOYSTICK_3)
 	{
 
 		printf("\n");
@@ -116,24 +116,54 @@ public:
 		printf("\n");
 
 		driveSystem.SetExpiration(0.1);
-		//printf("Matt Cassin is Awesome!");
+		//printf("Matt Cassin, Kyle Ronsberg, Tyler Seiford, Tim (The Great) Larson, Adam the atom (Hamilton) and Jacob Ozel are Programmers!");
 	}
+
+	float SignSquare(float f)
+	{
+		if (f < 0)
+		{
+			return -1.0 * f * f;
+		}
+		else
+		{
+			return f * f;
+		}
+	}
+
+	float Twist(float f)
+	{
+		if (f < 0)
+		{
+			return -1.0 * f * f * SPIN_SPEED;
+		}
+		else
+		{
+			return f * f * SPIN_SPEED;
+		}
+	}
+
 
 	void OperatorControl()
 	{
 		driveSystem.SetSafetyEnabled(true);
 		Wait(0.005);
 
-		if (netConsoleEnabled) printf("MyRobot -- LEFT %d\n", PWM_TALON_LEFT);
-		if (netConsoleEnabled) printf("MyRobot -- RIGHT %d\n", PWM_TALON_RIGHT);
+		printf("MyRobot -- LEFT Front %d\n", PWM_TALON_LEFT_FRONT);
+		printf("MyRobot -- RIGHT Front %d\n", PWM_TALON_RIGHT_FRONT);
+		printf("MyRobot -- LEFT Rear %d\n", PWM_TALON_LEFT_REAR);
+		printf("MyRobot -- RIGHT Rear %d\n", PWM_TALON_RIGHT_REAR);
 
 		while (IsOperatorControl() && IsEnabled())
 		{
-			driveSystem.ArcadeDrive(driverStick,true);
+			float x = SignSquare(driverStick.GetX());
+			float y = SignSquare(driverStick.GetY());
+			float rotate = Twist(driverStick2.GetX());
+			driveSystem.MecanumDrive_Cartesian(x,y,rotate);
 			Wait(0.005);
 		}
 	}
-
 };
 
 START_ROBOT_CLASS(Robot);
+//THIS IS CODE SMART ONE
