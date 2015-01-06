@@ -108,7 +108,6 @@ public:
 		driverStick2(JOYSTICK_2),
 		controlStick(JOYSTICK_3)
 	{
-
 		printf("\n");
 		printf("(: Hello World! :)\n");
 		printf("\n");
