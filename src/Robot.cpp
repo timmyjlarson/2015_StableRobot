@@ -2,7 +2,9 @@
 #include <time.h>
 
 /**
- * Basic Driving Program
+ * 2501's 2015 Robot Code
+ * Written by:
+ * Tyler Seiford
  */
 
 class Robot: public SampleRobot
@@ -25,7 +27,7 @@ private:
 		PWM_TALON_LEFT_FRONT,
 		PWM_TALON_RIGHT_REAR,
 		PWM_TALON_LEFT_REAR,
-		PWM_EMPTY_5,
+		PWM_TALON_ELEVATOR,
 		PWM_EMPTY_6,
 		PWM_EMPTY_7,
 		PWM_EMPTY_8,
@@ -60,7 +62,6 @@ private:
 		DIO_EMPTY_13,
 		DIO_EMPTY_14
 	};
-
 	enum SOLENOID_PORTS
 	{
 		SOLENOID_EMPTY_1 =1,
@@ -72,51 +73,121 @@ private:
 		SOLENOID_EMPTY_7,
 		SOLENOID_EMPTY_8
 	};
-
 	enum JOYSTICK_ID
 	{
 		JOYSTICK_1 = 1,
 		JOYSTICK_2,
 		JOYSTICK_3
 	};
-
 	struct JoyStickState
-	{
-		bool TriggerPressed;
-		bool Button2Pressed;
-		bool Button3Pressed;
-		bool Button4Pressed;
-		bool Button5Pressed;
-		bool Button6Pressed;
-		bool Button7Pressed;
-		bool Button8Pressed;
-		bool Button9Pressed;
-		bool Button10Pressed;
-		bool Button11Pressed;
-		bool Button12Pressed;
+	{								//	Control				Driver			Driver2
+		bool TriggerPressed;		//------------------------------------------------------
+		bool Button2Pressed;		//
+		bool Button3Pressed;		//
+		bool Button4Pressed;		//
+		bool Button5Pressed;		//
+		bool Button6Pressed;		//
+		bool Button7Pressed;		//
+		bool Button8Pressed;		//
+		bool Button9Pressed;		//
+		bool Button10Pressed;		//
+		bool Button11Pressed;		//
+		bool Button12Pressed;		//
+		bool YForwardPressed;		//	Elevator Up
+		bool YReversePressed;		//	Elevator Down
 	};
 
 	RobotDrive driveSystem;
-	Joystick driverStick, driverStick2, controlStick;
+
+	Joystick driverStick;
+	Joystick driverStick2;
+	Joystick controlStick;
+
+	JoyStickState driverState;
+	JoyStickState driverState2;
+	JoyStickState controlState;
+
+	Talon elevator;
+	bool elevatorIsRunningUp;
+	bool elevatorIsRunningDown;
 
 	const float SPIN_SPEED = 0.5;
+	const float ELEVATOR_SPEED = 0.5;
 
 public:
 	Robot() :
 		driveSystem(PWM_TALON_RIGHT_FRONT,PWM_TALON_LEFT_FRONT,PWM_TALON_RIGHT_REAR,PWM_TALON_LEFT_REAR),
 		driverStick(JOYSTICK_1),
 		driverStick2(JOYSTICK_2),
-		controlStick(JOYSTICK_3)
+		controlStick(JOYSTICK_3),
+		elevator(PWM_TALON_ELEVATOR)
 	{
-		printf("\n");
-		printf("(: Hello World! :)\n");
-		printf("\n");
-		printf("Written by FRC Team 2501\n");
-		printf("\n");
+		SmartDashboard::PutString("DB/String 0", "(: Hello World! :)");
+		SmartDashboard::PutString("DB/String 1", "Written by: ");
+		SmartDashboard::PutString("DB/String 2", "FRC Team 2501");
 
 		driveSystem.SetExpiration(0.1);
+
+		elevatorIsRunningUp = 0;
+		elevatorIsRunningDown = 0;
+		elevator.Set(0.0);
 		//printf("Matt Cassin is Awesome!");
 	}
+
+	void checkElevatorButtons()
+	{
+		if (controlStick.GetY() > 0.5)
+		{
+			if (!controlState.YForwardPressed)
+			{
+				controlState.YForwardPressed = true;
+
+				if (!elevatorIsRunningUp)
+				{
+					elevatorIsRunningUp = true;
+					elevator.Set(ELEVATOR_SPEED);
+				}
+			}
+		}
+		else
+		{
+			if (controlState.YForwardPressed)
+			{
+				controlState.YForwardPressed = false;
+				if (elevatorIsRunningUp)
+				{
+					elevatorIsRunningUp = false;
+					elevator.Set(0.0);
+				}
+			}
+		}
+		if (controlStick.GetY() < -0.5)
+		{
+			if (!controlState.YReversePressed)
+			{
+				controlState.YReversePressed = true;
+
+				if (!elevatorIsRunningDown)
+				{
+					elevatorIsRunningDown = true;
+					elevator.Set(ELEVATOR_SPEED * -1);
+				}
+			}
+		}
+		else
+		{
+			if (controlState.YReversePressed)
+			{
+				controlState.YReversePressed = false;
+				if (elevatorIsRunningDown)
+				{
+					elevatorIsRunningDown = false;
+					elevator.Set(0.0);
+				}
+			}
+		}
+	}
+
 
 	float SignSquare(float f)
 	{
@@ -148,10 +219,10 @@ public:
 		driveSystem.SetSafetyEnabled(true);
 		Wait(0.005);
 
-		printf("MyRobot -- LEFT Front %d\n", PWM_TALON_LEFT_FRONT);
-		printf("MyRobot -- RIGHT Front %d\n", PWM_TALON_RIGHT_FRONT);
-		printf("MyRobot -- LEFT Rear %d\n", PWM_TALON_LEFT_REAR);
-		printf("MyRobot -- RIGHT Rear %d\n", PWM_TALON_RIGHT_REAR);
+		//SmartDashboard::PutString("DB/String 6", "MyRobot -- LEFT Front %d\n", PWM_TALON_LEFT_FRONT);
+		//SmartDashboard::PutString("DB/String 7", "MyRobot -- RIGHT Front %d\n", PWM_TALON_RIGHT_FRONT);
+		//SmartDashboard::PutString("DB/String 8", "MyRobot -- LEFT Rear %d\n", PWM_TALON_LEFT_REAR);
+		//SmartDashboard::PutString("DB/String 9", "MyRobot -- RIGHT Rear %d\n", PWM_TALON_RIGHT_REAR);
 
 		while (IsOperatorControl() && IsEnabled())
 		{
@@ -159,7 +230,10 @@ public:
 			float y = SignSquare(driverStick.GetY());
 			float rotate = Twist(driverStick2.GetX());
 			driveSystem.MecanumDrive_Cartesian(x,y,rotate);
+
 			Wait(0.005);
+
+			checkElevatorButtons();
 		}
 	}
 };
