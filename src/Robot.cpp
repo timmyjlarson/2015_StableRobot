@@ -31,8 +31,8 @@ private:
 		PWM_EMPTY_6,
 		PWM_EMPTY_7,
 		PWM_EMPTY_8,
-		PWM_EMPTY_9,
-		PWM_EMPTY_10,
+		PWM_SERVO_CAMERA_TILT,
+		PWM_SERVO_CAMERA_PAN,
 	};
 	enum RELAY_OUT
 	{
@@ -95,6 +95,10 @@ private:
 		bool Button12Pressed;		//
 		bool YForwardPressed;		//	Elevator Up
 		bool YReversePressed;		//	Elevator Down
+		bool Axis5Forward;			//	Camera Down?
+		bool Axis5Backward;			//	Camera Up?
+		bool Axis6Forward;			//	Camera Right?
+		bool Axis6Backward;			//	Camera Left?
 	};
 
 	RobotDrive driveSystem;
@@ -111,6 +115,16 @@ private:
 	bool elevatorIsRunningUp;
 	bool elevatorIsRunningDown;
 
+	float cameraTiltAngle;
+	float cameraTiltMinAngle;
+	float cameraTiltMaxAngle;
+	Servo cameraTilt;
+
+	float cameraPanAngle;
+	float cameraPanMinAngle;
+	float cameraPanMaxAngle;
+	Servo cameraPan;
+
 	const float SPIN_SPEED = 0.5;
 	const float ELEVATOR_SPEED = 0.5;
 
@@ -120,18 +134,125 @@ public:
 		driverStick(JOYSTICK_1),
 		driverStick2(JOYSTICK_2),
 		controlStick(JOYSTICK_3),
-		elevator(PWM_TALON_ELEVATOR)
+		elevator(PWM_TALON_ELEVATOR),
+		cameraTilt(PWM_SERVO_CAMERA_TILT),
+		cameraPan(PWM_SERVO_CAMERA_PAN)
 	{
-		SmartDashboard::PutString("DB/String 0", "(: Hello World! :)");
-		SmartDashboard::PutString("DB/String 1", "Written by: ");
-		SmartDashboard::PutString("DB/String 2", "FRC Team 2501");
+		//SmartDashboard::PutString("DB/String 0", "(: Hello World! :)");
+		//SmartDashboard::PutString("DB/String 1", "Written by: ");
+		//SmartDashboard::PutString("DB/String 2", "FRC Team 2501");
 
 		driveSystem.SetExpiration(0.1);
 
+		//printf("Matt Cassin is Awesome!");
+	}
+
+	void initCamera()
+	{
+		cameraTiltMinAngle = cameraTilt.GetMinAngle();
+		cameraTiltMaxAngle = cameraTilt.GetMaxAngle();
+		cameraTiltAngle = cameraTiltMinAngle;
+		cameraTilt.SetAngle(cameraTiltAngle);
+
+		cameraPanMinAngle = cameraPan.GetMinAngle();
+		cameraPanMaxAngle = cameraPan.GetMaxAngle();
+		cameraPanAngle = cameraPanMinAngle;
+		cameraPan.SetAngle(cameraPanAngle);
+	}
+	void checkCameraTiltButtons()
+	{
+		if (controlStick.GetRawAxis(5) > 0.5) // tilt down
+		{
+			if (!controlState.Axis5Forward)
+			{
+				controlState.Axis5Forward = true;
+				if (cameraTiltAngle != cameraTiltMinAngle)
+				{
+					cameraTiltAngle -= 10;
+					if (cameraTiltAngle < cameraTiltMinAngle) cameraTiltAngle = cameraTiltMinAngle;
+
+					cameraTilt.SetAngle(cameraTiltAngle);
+				}
+			}
+		}
+		else
+		{
+			if (controlState.Axis5Forward)
+			{
+				controlState.Axis5Forward = false;
+			}
+		}
+		if (controlStick.GetRawAxis(5) > -0.5) // tilt up
+		{
+			if (!controlState.Axis5Backward)
+			{
+				controlState.Axis5Backward = true;
+				if (cameraTiltAngle != cameraTiltMaxAngle)
+				{
+					cameraTiltAngle += 10;
+					if (cameraTiltAngle > cameraTiltMaxAngle) cameraTiltAngle = cameraTiltMaxAngle;
+						cameraTilt.SetAngle(cameraTiltAngle);
+				}
+			}
+		}
+		else
+		{
+			if (controlState.Axis5Backward)
+			{
+				controlState.Axis5Backward = false;
+			}
+		}
+	}
+	void checkCameraPanButtons()
+	{
+		if (controlStick.GetRawAxis(6) > 0.5) // Pan down
+		{
+			if (!controlState.Axis6Forward)
+			{
+				controlState.Axis6Forward = true;
+				if (cameraPanAngle != cameraPanMinAngle)
+				{
+					cameraPanAngle -= 10;
+					if (cameraPanAngle < cameraPanMinAngle) cameraPanAngle = cameraPanMinAngle;
+
+					cameraPan.SetAngle(cameraPanAngle);
+				}
+			}
+		}
+		else
+		{
+			if (controlState.Axis6Forward)
+			{
+				controlState.Axis6Forward = false;
+			}
+		}
+		if (controlStick.GetRawAxis(6) > -0.5) // Pan up
+		{
+			if (!controlState.Axis6Backward)
+			{
+				controlState.Axis6Backward = true;
+				if (cameraPanAngle != cameraPanMaxAngle)
+				{
+					cameraPanAngle += 10;
+					if (cameraPanAngle > cameraPanMaxAngle) cameraPanAngle = cameraPanMaxAngle;
+						cameraPan.SetAngle(cameraPanAngle);
+				}
+			}
+		}
+		else
+		{
+			if (controlState.Axis6Backward)
+			{
+				controlState.Axis6Backward = false;
+			}
+		}
+	}
+
+	void initElevator()
+	{
 		elevatorIsRunningUp = 0;
 		elevatorIsRunningDown = 0;
 		elevator.Set(0.0);
-		//printf("Matt Cassin is Awesome!");
 	}
 
 	void checkElevatorButtons()
@@ -188,7 +309,6 @@ public:
 		}
 	}
 
-
 	float SignSquare(float f)
 	{
 		if (f < 0)
@@ -213,16 +333,26 @@ public:
 		}
 	}
 
+	void Autonomous()
+	{
+		driveSystem.SetSafetyEnabled(false);
+		driveSystem.MecanumDrive_Cartesian(0,0,0);
+		Wait(2.0);
+	}
 
 	void OperatorControl()
 	{
 		driveSystem.SetSafetyEnabled(true);
 		Wait(0.005);
 
+		initElevator();
+		initCamera();
+
 		//SmartDashboard::PutString("DB/String 6", "MyRobot -- LEFT Front %d\n", PWM_TALON_LEFT_FRONT);
 		//SmartDashboard::PutString("DB/String 7", "MyRobot -- RIGHT Front %d\n", PWM_TALON_RIGHT_FRONT);
 		//SmartDashboard::PutString("DB/String 8", "MyRobot -- LEFT Rear %d\n", PWM_TALON_LEFT_REAR);
 		//SmartDashboard::PutString("DB/String 9", "MyRobot -- RIGHT Rear %d\n", PWM_TALON_RIGHT_REAR);
+		//printf(Tim Larson is king of the nerds);
 
 		while (IsOperatorControl() && IsEnabled())
 		{
