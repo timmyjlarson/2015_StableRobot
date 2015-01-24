@@ -28,11 +28,24 @@ private:
 		PWM_TALON_RIGHT_REAR,
 		PWM_TALON_LEFT_REAR,
 		PWM_TALON_ELEVATOR,
-		PWM_EMPTY_6,
+		PWM_TALON_ARMS,
 		PWM_EMPTY_7,
-		PWM_EMPTY_8,
-		PWM_SERVO_CAMERA_TILT,
 		PWM_SERVO_CAMERA_PAN,
+		PWM_SERVO_CAMERA_TILT,
+		PWN_EMPTY_10,
+	};
+	enum CAN
+	{
+		CAN_TALON_RIGHT_FRONT = 1,
+		CAN_TALON_LEFT_FRONT,
+		CAN_TALON_RIGHT_REAR,
+		CAN_TALON_LEFT_REAR,
+		CAN_TALON_ELEVATOR,
+		CAN_EMPTY_6,
+		CAN_EMPTY_7,
+		CAN_EMPTY_8,
+		CAN_EMPTY_9,
+		PWN_EMPTY_10,
 	};
 	enum RELAY_OUT
 	{
@@ -115,6 +128,10 @@ private:
 	bool elevatorIsRunningUp;
 	bool elevatorIsRunningDown;
 
+	Talon arms;
+	bool armsIsRunningUp;
+	bool armsIsRunningDown;
+
 	float cameraTiltAngle;
 	float cameraTiltMinAngle;
 	float cameraTiltMaxAngle;
@@ -127,6 +144,7 @@ private:
 
 	const float SPIN_SPEED = 0.5;
 	const float ELEVATOR_SPEED = 0.5;
+	const float ARMS_SPEED = 0.5;
 
 public:
 	Robot() :
@@ -135,6 +153,7 @@ public:
 		driverStick2(JOYSTICK_2),
 		controlStick(JOYSTICK_3),
 		elevator(PWM_TALON_ELEVATOR),
+		arms(PWM_TALON_ARMS),
 		cameraTilt(PWM_SERVO_CAMERA_TILT),
 		cameraPan(PWM_SERVO_CAMERA_PAN)
 	{
@@ -161,11 +180,11 @@ public:
 	}
 	void checkCameraTiltButtons()
 	{
-		if (controlStick.GetRawAxis(5) > 0.5) // tilt down
+		if (controlStick.GetRawButton(9)) // tilt down
 		{
-			if (!controlState.Axis5Forward)
+			if (!controlState.Button9Pressed)
 			{
-				controlState.Axis5Forward = true;
+				controlState.Button9Pressed = true;
 				if (cameraTiltAngle != cameraTiltMinAngle)
 				{
 					cameraTiltAngle -= 10;
@@ -177,16 +196,16 @@ public:
 		}
 		else
 		{
-			if (controlState.Axis5Forward)
+			if (controlState.Button9Pressed)
 			{
-				controlState.Axis5Forward = false;
+				controlState.Button9Pressed = false;
 			}
 		}
-		if (controlStick.GetRawAxis(5) > -0.5) // tilt up
+		if (controlStick.GetRawButton(10)) // tilt up
 		{
-			if (!controlState.Axis5Backward)
+			if (!controlState.Button10Pressed)
 			{
-				controlState.Axis5Backward = true;
+				controlState.Button10Pressed = true;
 				if (cameraTiltAngle != cameraTiltMaxAngle)
 				{
 					cameraTiltAngle += 10;
@@ -197,19 +216,19 @@ public:
 		}
 		else
 		{
-			if (controlState.Axis5Backward)
+			if (controlState.Button10Pressed)
 			{
-				controlState.Axis5Backward = false;
+				controlState.Button10Pressed = false;
 			}
 		}
 	}
 	void checkCameraPanButtons()
 	{
-		if (controlStick.GetRawAxis(6) > 0.5) // Pan down
+		if (controlStick.GetRawButton(7)) // Pan down
 		{
-			if (!controlState.Axis6Forward)
+			if (!controlState.Button7Pressed)
 			{
-				controlState.Axis6Forward = true;
+				controlState.Button7Pressed = true;
 				if (cameraPanAngle != cameraPanMinAngle)
 				{
 					cameraPanAngle -= 10;
@@ -221,16 +240,16 @@ public:
 		}
 		else
 		{
-			if (controlState.Axis6Forward)
+			if (controlState.Button7Pressed)
 			{
-				controlState.Axis6Forward = false;
+				controlState.Button7Pressed = false;
 			}
 		}
-		if (controlStick.GetRawAxis(6) > -0.5) // Pan up
+		if (controlStick.GetRawButton(8)) // Pan up
 		{
-			if (!controlState.Axis6Backward)
+			if (!controlState.Button8Pressed)
 			{
-				controlState.Axis6Backward = true;
+				controlState.Button8Pressed = true;
 				if (cameraPanAngle != cameraPanMaxAngle)
 				{
 					cameraPanAngle += 10;
@@ -241,27 +260,25 @@ public:
 		}
 		else
 		{
-			if (controlState.Axis6Backward)
+			if (controlState.Button8Pressed)
 			{
-				controlState.Axis6Backward = false;
+				controlState.Button8Pressed = false;
 			}
 		}
 	}
-
 	void initElevator()
 	{
 		elevatorIsRunningUp = 0;
 		elevatorIsRunningDown = 0;
 		elevator.Set(0.0);
 	}
-
 	void checkElevatorButtons()
 	{
-		if (controlStick.GetY() > 0.5)
+		if (controlStick.GetRawButton(12))
 		{
-			if (!controlState.YForwardPressed)
+			if (!controlState.Button12Pressed)
 			{
-				controlState.YForwardPressed = true;
+				controlState.Button12Pressed = true;
 
 				if (!elevatorIsRunningUp)
 				{
@@ -272,9 +289,9 @@ public:
 		}
 		else
 		{
-			if (controlState.YForwardPressed)
+			if (controlState.Button12Pressed)
 			{
-				controlState.YForwardPressed = false;
+				controlState.Button12Pressed = false;
 				if (elevatorIsRunningUp)
 				{
 					elevatorIsRunningUp = false;
@@ -282,11 +299,11 @@ public:
 				}
 			}
 		}
-		if (controlStick.GetY() < -0.5)
+		if (controlStick.GetRawButton(11) < -0.5)
 		{
-			if (!controlState.YReversePressed)
+			if (!controlState.Button11Pressed)
 			{
-				controlState.YReversePressed = true;
+				controlState.Button11Pressed = true;
 
 				if (!elevatorIsRunningDown)
 				{
@@ -297,9 +314,9 @@ public:
 		}
 		else
 		{
-			if (controlState.YReversePressed)
+			if (controlState.Button11Pressed)
 			{
-				controlState.YReversePressed = false;
+				controlState.Button11Pressed = false;
 				if (elevatorIsRunningDown)
 				{
 					elevatorIsRunningDown = false;
@@ -308,7 +325,67 @@ public:
 			}
 		}
 	}
+	void initArms()
+	{
+		armsIsRunningUp = 0;
+		armsIsRunningDown = 0;
+		arms.Set(0.0);
+	}
+	void checkArmsButtons()
+	{
+		if (controlStick.GetRawButton(1))
+		{
+			if (!controlState.TriggerPressed)
+			{
+				controlState.TriggerPressed = true;
 
+				if (!armsIsRunningUp)
+				{
+					armsIsRunningUp = true;
+					arms.Set(ARMS_SPEED);
+				}
+			}
+		}
+		else
+		{
+			if (controlState.TriggerPressed)
+			{
+				controlState.TriggerPressed = false;
+
+				if (armsIsRunningUp)
+				{
+					armsIsRunningUp = false;
+					arms.Set(0.0);
+				}
+			}
+		}
+		if (controlStick.GetRawButton(2))
+		{
+			if (!controlState.Button2Pressed)
+			{
+				controlState.Button2Pressed = true;
+
+				if (!armsIsRunningDown)
+				{
+					armsIsRunningDown = true;
+					arms.Set(ARMS_SPEED * -1);
+				}
+			}
+		}
+		else
+		{
+			if (controlState.Button2Pressed)
+			{
+				controlState.Button2Pressed = false;
+
+				if (armsIsRunningDown)
+				{
+					armsIsRunningDown = false;
+					arms.Set(0.0);
+				}
+			}
+		}
+	}
 	float SignSquare(float f)
 	{
 		if (f < 0)
@@ -320,7 +397,6 @@ public:
 			return f * f;
 		}
 	}
-
 	float Twist(float f)
 	{
 		if (f < 0)
@@ -332,14 +408,12 @@ public:
 			return f * f * SPIN_SPEED;
 		}
 	}
-
 	void Autonomous()
 	{
 		driveSystem.SetSafetyEnabled(false);
 		driveSystem.MecanumDrive_Cartesian(0,0,0);
 		Wait(2.0);
 	}
-
 	void OperatorControl()
 	{
 		driveSystem.SetSafetyEnabled(true);
@@ -352,7 +426,6 @@ public:
 		//SmartDashboard::PutString("DB/String 7", "MyRobot -- RIGHT Front %d\n", PWM_TALON_RIGHT_FRONT);
 		//SmartDashboard::PutString("DB/String 8", "MyRobot -- LEFT Rear %d\n", PWM_TALON_LEFT_REAR);
 		//SmartDashboard::PutString("DB/String 9", "MyRobot -- RIGHT Rear %d\n", PWM_TALON_RIGHT_REAR);
-		//printf(Tim Larson is king of the nerds);
 
 		while (IsOperatorControl() && IsEnabled())
 		{
@@ -364,6 +437,8 @@ public:
 			Wait(0.005);
 
 			checkElevatorButtons();
+			checkCameraTiltButtons();
+			checkCameraPanButtons();
 		}
 	}
 };
