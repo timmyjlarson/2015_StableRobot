@@ -7,7 +7,6 @@
  * Tyler Seiford
  * Tim Larson
  * Jacob Ozel
- * Edited by: Kyle Ronsberg
  */
 
 class Robot: public SampleRobot
@@ -147,14 +146,16 @@ private:
 	DigitalInput armsMinLimitSwitch;
 	bool armsMinLimitSwitchIsOpen;
 
+	int elevatorMaxOldLimit, elevatorMaxNewLimit, elevatorMinNewLimit, elevatorMinOldLimit, armsMaxOldLimit, armsMaxNewLimit, armsMinOldLimit, armsMinNewLimit;	//UINT32
+
 	float cameraTiltAngle;
-	float cameraTiltMinAngle;
-	float cameraTiltMaxAngle;
+	float cameraTiltMinAngle = 0.0;
+	float cameraTiltMaxAngle = 180.0;
 	Servo cameraTilt;
 
 	float cameraPanAngle;
-	float cameraPanMinAngle;
-	float cameraPanMaxAngle;
+	float cameraPanMinAngle = 0.0;
+	float cameraPanMaxAngle = 180.0;
 	Servo cameraPan;
 
 	const float SPIN_SPEED = 0.5;
@@ -186,14 +187,11 @@ public:
 	}
 	void initCamera()
 	{
-		cameraTiltMinAngle = cameraTilt.GetMinAngle();
-		cameraTiltMaxAngle = cameraTilt.GetMaxAngle();
-		cameraTiltAngle = cameraTiltMinAngle;
+
+		cameraTiltAngle = 90;
 		cameraTilt.SetAngle(cameraTiltAngle);
 
-		cameraPanMinAngle = cameraPan.GetMinAngle();
-		cameraPanMaxAngle = cameraPan.GetMaxAngle();
-		cameraPanAngle = cameraPanMinAngle;
+		cameraPanAngle = 90;
 		cameraPan.SetAngle(cameraPanAngle);
 	}
 	void checkCameraTiltButtons()
@@ -439,6 +437,58 @@ public:
 			}
 		}
 	}
+	void initLimits()
+	{
+		elevatorMaxNewLimit = elevatorMaxLimitSwitch.Get();
+		elevatorMaxOldLimit = elevatorMaxNewLimit;
+
+		elevatorMinNewLimit = elevatorMinLimitSwitch.Get();
+		elevatorMinOldLimit = elevatorMinNewLimit;
+
+		armsMaxNewLimit = armsMaxLimitSwitch.Get();
+		armsMaxOldLimit = armsMaxNewLimit;
+
+		armsMinNewLimit = armsMinLimitSwitch.Get();
+		armsMinOldLimit = armsMinNewLimit;
+	}
+	void checkLimits()
+	{
+		elevatorMaxNewLimit = elevatorMaxLimitSwitch.Get();
+		if(elevatorMaxOldLimit == 0 && elevatorMaxNewLimit == 1)
+		{
+			elevatorIsRunningUp = false;
+			elevatorIsRunningDown = false;
+			elevator.Set(0.0);
+		}
+		elevatorMaxOldLimit = elevatorMaxNewLimit;
+
+		elevatorMinNewLimit = elevatorMinLimitSwitch.Get();
+		if(elevatorMinOldLimit == 0 && elevatorMinNewLimit == 1)
+		{
+			elevatorIsRunningUp = false;
+			elevatorIsRunningDown = false;
+			elevator.Set(0.0);
+		}
+		elevatorMinOldLimit = elevatorMinNewLimit;
+
+		armsMaxNewLimit = armsMaxLimitSwitch.Get();
+		if(armsMaxOldLimit == 0 && armsMaxNewLimit == 1)
+		{
+			armsIsRunningUp = false;
+			armsIsRunningDown = false;
+			arms.Set(0.0);
+		}
+		armsMaxOldLimit = armsMaxNewLimit;
+
+		armsMinNewLimit = armsMinLimitSwitch.Get();
+		if(armsMinOldLimit == 0 && armsMinNewLimit == 1)
+		{
+			armsIsRunningUp = false;
+			armsIsRunningDown = false;
+			arms.Set(0.0);
+		}
+		armsMinOldLimit = armsMinNewLimit;
+	}
 	float SignSquare(float f)
 	{
 		if (f < 0)
@@ -450,7 +500,7 @@ public:
 			return f * f;
 		}
 	}
-	float Twist(float f)
+	float SignSpin(float f)
 	{
 		if (f < 0)
 		{
@@ -469,26 +519,13 @@ public:
 	}
 	void OperatorControl()
 	{
-		int elevatorMaxOldLimit, elevatorMaxNewLimit, elevatorMinNewLimit, elevatorMinOldLimit, armsMaxOldLimit, armsMaxNewLimit, armsMinOldLimit, armsMinNewLimit;	//UINT32
-
 		driveSystem.SetSafetyEnabled(true);
 		Wait(0.005);
 
 		initElevator();
 		initArms();
 		initCamera();
-
-		elevatorMaxNewLimit = elevatorMaxLimitSwitch.Get();
-		elevatorMaxOldLimit = elevatorMaxNewLimit;
-
-		elevatorMinNewLimit = elevatorMinLimitSwitch.Get();
-		elevatorMinOldLimit = elevatorMinNewLimit;
-
-		armsMaxNewLimit = armsMaxLimitSwitch.Get();
-		armsMaxOldLimit = armsMaxNewLimit;
-
-		armsMinNewLimit = armsMinLimitSwitch.Get();
-		armsMinOldLimit = armsMinNewLimit;
+		initLimits();
 
 		//SmartDashboard::PutString("DB/String 6", "MyRobot -- LEFT Front %d\n", PWM_TALON_LEFT_FRONT);
 		//SmartDashboard::PutString("DB/String 7", "MyRobot -- RIGHT Front %d\n", PWM_TALON_RIGHT_FRONT);
@@ -499,7 +536,7 @@ public:
 		{
 			float x = SignSquare(driverStick.GetX());
 			float y = SignSquare(driverStick.GetY());
-			float rotate = Twist(driverStick2.GetX());
+			float rotate = SignSpin(driverStick2.GetX());
 			driveSystem.MecanumDrive_Cartesian(x,y,rotate);
 
 			Wait(0.005);
@@ -508,42 +545,8 @@ public:
 			checkArmsButtons();
 			checkCameraTiltButtons();
 			checkCameraPanButtons();
+			checkLimits();
 
-			elevatorMaxNewLimit = elevatorMaxLimitSwitch.Get();
-			if(elevatorMaxOldLimit == 0 && elevatorMaxNewLimit == 1)
-			{
-				elevatorIsRunningUp = false;
-				elevatorIsRunningDown = false;
-				elevator.Set(0.0);
-			}
-			elevatorMaxOldLimit = elevatorMaxNewLimit;
-
-			elevatorMinNewLimit = elevatorMinLimitSwitch.Get();
-			if(elevatorMinOldLimit == 0 && elevatorMinNewLimit == 1)
-			{
-				elevatorIsRunningUp = false;
-				elevatorIsRunningDown = false;
-				elevator.Set(0.0);
-			}
-			elevatorMinOldLimit = elevatorMinNewLimit;
-
-			armsMaxNewLimit = armsMaxLimitSwitch.Get();
-			if(armsMaxOldLimit == 0 && armsMaxNewLimit == 1)
-			{
-				armsIsRunningUp = false;
-				armsIsRunningDown = false;
-				arms.Set(0.0);
-			}
-			armsMaxOldLimit = armsMaxNewLimit;
-
-			armsMinNewLimit = armsMinLimitSwitch.Get();
-			if(armsMinOldLimit == 0 && armsMinNewLimit == 1)
-			{
-				armsIsRunningUp = false;
-				armsIsRunningDown = false;
-				arms.Set(0.0);
-			}
-			armsMinOldLimit = armsMinNewLimit;
 		}
 	}
 };
