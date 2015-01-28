@@ -5,6 +5,9 @@
  * 2501's 2015 Robot Code
  * Written by:
  * Tyler Seiford
+ * Tim Larson
+ * Jacob Ozel
+ * Edited by: Kyle Ronsberg
  */
 
 class Robot: public SampleRobot
@@ -45,7 +48,7 @@ private:
 		CAN_EMPTY_7,
 		CAN_EMPTY_8,
 		CAN_EMPTY_9,
-		PWN_EMPTY_10,
+		CAN_EMPTY_10,
 	};
 	enum RELAY_OUT
 	{
@@ -60,10 +63,10 @@ private:
 	};
 	enum DIO_PORTS
 	{
-		DIO_EMPTY_1 = 1,
-		DIO_EMPTY_2,
-		DIO_EMPTY_3,
-		DIO_EMPTY_4,
+		DIO_LIMIT_SWITCH_ELEVATOR_MAX = 1,
+		DIO_LIMIT_SWITCH_ELEVATOR_MIN,
+		DIO_LIMIT_SWITCH_ARMS_MAX,
+		DIO_LIMIT_SWITCH_ARMS_MIN,
 		DIO_EMPTY_5,
 		DIO_EMPTY_6,
 		DIO_EMPTY_7,
@@ -88,7 +91,7 @@ private:
 	};
 	enum JOYSTICK_ID
 	{
-		JOYSTICK_1 = 1,
+		JOYSTICK_1 = 0,
 		JOYSTICK_2,
 		JOYSTICK_3
 	};
@@ -132,6 +135,18 @@ private:
 	bool armsIsRunningUp;
 	bool armsIsRunningDown;
 
+	DigitalInput elevatorMaxLimitSwitch;
+	bool elevatorMaxLimitSwitchIsOpen;
+
+	DigitalInput elevatorMinLimitSwitch;
+	bool elevatorMinLimitSwitchIsOpen;
+
+	DigitalInput armsMaxLimitSwitch;
+	bool armsMaxLimitSwitchIsOpen;
+
+	DigitalInput armsMinLimitSwitch;
+	bool armsMinLimitSwitchIsOpen;
+
 	float cameraTiltAngle;
 	float cameraTiltMinAngle;
 	float cameraTiltMaxAngle;
@@ -154,6 +169,10 @@ public:
 		controlStick(JOYSTICK_3),
 		elevator(PWM_TALON_ELEVATOR),
 		arms(PWM_TALON_ARMS),
+		elevatorMaxLimitSwitch(DIO_LIMIT_SWITCH_ELEVATOR_MAX),
+		elevatorMinLimitSwitch(DIO_LIMIT_SWITCH_ELEVATOR_MIN),
+		armsMaxLimitSwitch(DIO_LIMIT_SWITCH_ARMS_MAX),
+		armsMinLimitSwitch(DIO_LIMIT_SWITCH_ARMS_MIN),
 		cameraTilt(PWM_SERVO_CAMERA_TILT),
 		cameraPan(PWM_SERVO_CAMERA_PAN)
 	{
@@ -165,7 +184,6 @@ public:
 
 		//printf("Matt Cassin is Awesome!");
 	}
-
 	void initCamera()
 	{
 		cameraTiltMinAngle = cameraTilt.GetMinAngle();
@@ -299,7 +317,7 @@ public:
 				}
 			}
 		}
-		if (controlStick.GetRawButton(11) < -0.5)
+		if (controlStick.GetRawButton(11))
 		{
 			if (!controlState.Button11Pressed)
 			{
@@ -323,6 +341,41 @@ public:
 					elevator.Set(0.0);
 				}
 			}
+		}
+	}
+	void debug()
+	{
+		if(elevatorIsRunningDown)
+		{
+			SmartDashboard::PutString("DB/String 0", "DOWN TRUE");
+		}
+		else
+		{
+			SmartDashboard::PutString("DB/String 0", "DOWN FALSE");
+		}
+		if(elevatorIsRunningUp)
+		{
+			SmartDashboard::PutString("DB/String 1", "UP TRUE");
+		}
+		else
+		{
+			SmartDashboard::PutString("DB/String 1", "UP FALSE");
+		}
+		if(controlStick.GetRawButton(12))
+		{
+			SmartDashboard::PutString("DB/String 2", "12 ON");
+		}
+		else
+		{
+			SmartDashboard::PutString("DB/String 2", "12 OFF");
+		}
+		if(controlStick.GetRawButton(11))
+		{
+			SmartDashboard::PutString("DB/String 3", "11 ON");
+		}
+		else
+		{
+			SmartDashboard::PutString("DB/String 3", "11 OFF");
 		}
 	}
 	void initArms()
@@ -416,11 +469,26 @@ public:
 	}
 	void OperatorControl()
 	{
+		int elevatorMaxOldLimit, elevatorMaxNewLimit, elevatorMinNewLimit, elevatorMinOldLimit, armsMaxOldLimit, armsMaxNewLimit, armsMinOldLimit, armsMinNewLimit;	//UINT32
+
 		driveSystem.SetSafetyEnabled(true);
 		Wait(0.005);
 
 		initElevator();
+		initArms();
 		initCamera();
+
+		elevatorMaxNewLimit = elevatorMaxLimitSwitch.Get();
+		elevatorMaxOldLimit = elevatorMaxNewLimit;
+
+		elevatorMinNewLimit = elevatorMinLimitSwitch.Get();
+		elevatorMinOldLimit = elevatorMinNewLimit;
+
+		armsMaxNewLimit = armsMaxLimitSwitch.Get();
+		armsMaxOldLimit = armsMaxNewLimit;
+
+		armsMinNewLimit = armsMinLimitSwitch.Get();
+		armsMinOldLimit = armsMinNewLimit;
 
 		//SmartDashboard::PutString("DB/String 6", "MyRobot -- LEFT Front %d\n", PWM_TALON_LEFT_FRONT);
 		//SmartDashboard::PutString("DB/String 7", "MyRobot -- RIGHT Front %d\n", PWM_TALON_RIGHT_FRONT);
@@ -437,8 +505,45 @@ public:
 			Wait(0.005);
 
 			checkElevatorButtons();
+			checkArmsButtons();
 			checkCameraTiltButtons();
 			checkCameraPanButtons();
+
+			elevatorMaxNewLimit = elevatorMaxLimitSwitch.Get();
+			if(elevatorMaxOldLimit == 0 && elevatorMaxNewLimit == 1)
+			{
+				elevatorIsRunningUp = false;
+				elevatorIsRunningDown = false;
+				elevator.Set(0.0);
+			}
+			elevatorMaxOldLimit = elevatorMaxNewLimit;
+
+			elevatorMinNewLimit = elevatorMinLimitSwitch.Get();
+			if(elevatorMinOldLimit == 0 && elevatorMinNewLimit == 1)
+			{
+				elevatorIsRunningUp = false;
+				elevatorIsRunningDown = false;
+				elevator.Set(0.0);
+			}
+			elevatorMinOldLimit = elevatorMinNewLimit;
+
+			armsMaxNewLimit = armsMaxLimitSwitch.Get();
+			if(armsMaxOldLimit == 0 && armsMaxNewLimit == 1)
+			{
+				armsIsRunningUp = false;
+				armsIsRunningDown = false;
+				arms.Set(0.0);
+			}
+			armsMaxOldLimit = armsMaxNewLimit;
+
+			armsMinNewLimit = armsMinLimitSwitch.Get();
+			if(armsMinOldLimit == 0 && armsMinNewLimit == 1)
+			{
+				armsIsRunningUp = false;
+				armsIsRunningDown = false;
+				arms.Set(0.0);
+			}
+			armsMinOldLimit = armsMinNewLimit;
 		}
 	}
 };
