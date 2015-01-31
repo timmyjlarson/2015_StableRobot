@@ -38,16 +38,10 @@ private:
 	};
 	enum CAN
 	{
-		CAN_TALON_RIGHT_FRONT = 1,
+		CAN_TALON_RIGHT_FRONT = 0,
 		CAN_TALON_LEFT_FRONT,
 		CAN_TALON_RIGHT_REAR,
 		CAN_TALON_LEFT_REAR,
-		CAN_TALON_ELEVATOR,
-		CAN_EMPTY_6,
-		CAN_EMPTY_7,
-		CAN_EMPTY_8,
-		CAN_EMPTY_9,
-		CAN_EMPTY_10,
 	};
 	enum RELAY_OUT
 	{
@@ -107,7 +101,7 @@ private:
 		bool Button9Pressed;		//
 		bool Button10Pressed;		//
 		bool Button11Pressed;		//
-		bool Button12Pressed;		//
+		bool YForwardPresses;		//
 		bool YForwardPressed;		//	Elevator Up
 		bool YReversePressed;		//	Elevator Down
 		bool Axis5Forward;			//	Camera Down?
@@ -159,7 +153,8 @@ private:
 	Servo cameraPan;
 
 	const float SPIN_SPEED = 0.5;
-	const float ELEVATOR_SPEED = 0.5;
+	const float ELEVATOR_SPEED_UP = 0.5;
+	const float ELEVATOR_SPEED_DOWN = -0.25;
 	const float ARMS_SPEED = 0.5;
 
 public:
@@ -292,22 +287,22 @@ public:
 	{
 		if (controlStick.GetRawButton(12))
 		{
-			if (!controlState.Button12Pressed)
+			if (!controlState.YForwardPresses)
 			{
-				controlState.Button12Pressed = true;
+				controlState.YForwardPresses = true;
 
 				if (!elevatorIsRunningUp)
 				{
 					elevatorIsRunningUp = true;
-					elevator.Set(ELEVATOR_SPEED);
+					elevator.Set(ELEVATOR_SPEED_UP);
 				}
 			}
 		}
 		else
 		{
-			if (controlState.Button12Pressed)
+			if (controlState.YForwardPresses)
 			{
-				controlState.Button12Pressed = false;
+				controlState.YForwardPresses = false;
 				if (elevatorIsRunningUp)
 				{
 					elevatorIsRunningUp = false;
@@ -324,7 +319,7 @@ public:
 				if (!elevatorIsRunningDown)
 				{
 					elevatorIsRunningDown = true;
-					elevator.Set(ELEVATOR_SPEED * -1);
+					elevator.Set(ELEVATOR_SPEED_DOWN);
 				}
 			}
 		}
@@ -337,6 +332,69 @@ public:
 				{
 					elevatorIsRunningDown = false;
 					elevator.Set(0.0);
+				}
+			}
+		}
+	}
+	float SignElevator(float f)
+	{
+		if (f < 0)
+		{
+			return -0.5 * f * f;
+		}
+		else
+		{
+			return f * f;
+		}
+	}
+	void checkElevatorAxis()
+	{
+		float elevatorNum = SignElevator(controlStick.GetY());
+		elevator.Set(elevatorNum);
+
+		if (elevatorNum > 0.04)
+		{
+			if (!controlState.YForwardPressed)
+			{
+				controlState.YForwardPressed = true;
+
+				if (!elevatorIsRunningUp)
+				{
+					elevatorIsRunningUp = true;
+				}
+			}
+		}
+		else
+		{
+			if (controlState.YForwardPressed)
+			{
+				controlState.YForwardPressed = false;
+				if (elevatorIsRunningUp)
+				{
+					elevatorIsRunningUp = false;
+				}
+			}
+		}
+		if (elevatorNum > 0.04)
+		{
+			if (!controlState.YReversePressed)
+			{
+				controlState.YReversePressed = true;
+
+				if (!elevatorIsRunningDown)
+				{
+					elevatorIsRunningDown = true;
+				}
+			}
+		}
+		else
+		{
+			if (controlState.YReversePressed)
+			{
+				controlState.YReversePressed = false;
+				if (elevatorIsRunningDown)
+				{
+					elevatorIsRunningDown = false;
 				}
 			}
 		}
@@ -541,12 +599,11 @@ public:
 
 			Wait(0.005);
 
-			checkElevatorButtons();
+			checkElevatorAxis();
 			checkArmsButtons();
 			checkCameraTiltButtons();
 			checkCameraPanButtons();
 			checkLimits();
-
 		}
 	}
 };
