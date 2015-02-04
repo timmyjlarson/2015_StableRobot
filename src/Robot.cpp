@@ -7,6 +7,7 @@
  * Tyler Seiford
  * Tim Larson
  * Jacob Ozel
+ * Kyle Ronsberg [Captain]
  */
 
 class Robot: public SampleRobot
@@ -14,73 +15,62 @@ class Robot: public SampleRobot
 private:
 	enum ANALOG_IN
 	{
-		ANALOG_EMPTY_1 = 1,
+		ANALOG_EMPTY_0 = 0,
+		ANALOG_EMPTY_1,
 		ANALOG_EMPTY_2,
-		ANALOG_EMPTY_3,
-		ANALOG_EMPTY_4,
-		ANALOG_EMPTY_5,
-		ANALOG_EMPTY_6,
-		ANALOG_EMPTY_7,
-		ANALOG_EMPTY_8
+		ANALOG_EMPTY_3
 	};
 	enum PWM_OUT
 	{
-		PWM_TALON_RIGHT_FRONT = 1,
+		PWM_TALON_RIGHT_FRONT = 0,
 		PWM_TALON_LEFT_FRONT,
 		PWM_TALON_RIGHT_REAR,
 		PWM_TALON_LEFT_REAR,
+		PWM_EMPTY_4,
 		PWM_TALON_ELEVATOR,
 		PWM_TALON_ARMS,
-		PWM_EMPTY_7,
+		PWN_EPMTY_7,
 		PWM_SERVO_CAMERA_PAN,
-		PWM_SERVO_CAMERA_TILT,
-		PWN_EMPTY_10,
+		PWM_SERVO_CAMERA_TILT
 	};
 	enum CAN
 	{
-		CAN_TALON_RIGHT_FRONT = 0,
+		CAN_PNUEMATIC_CONTROL_MODULE = 0,
+		CAN_TALON_RIGHT_FRONT = 1,
 		CAN_TALON_LEFT_FRONT,
 		CAN_TALON_RIGHT_REAR,
-		CAN_TALON_LEFT_REAR,
+		CAN_TALON_LEFT_REAR
 	};
 	enum RELAY_OUT
 	{
-		RELAY_EMPTY_1 = 1,
+		RELAY_EMPTY_0 = 0,
+		RELAY_EMPTY_1,
 		RELAY_EMPTY_2,
-		RELAY_EMPTY_3,
-		RELAY_EMPTY_4,
-		RELAY_EMPTY_5,
-		RELAY_EMPTY_6,
-		RELAY_EMPTY_7,
-		RELAY_EMPTY_8
+		RELAY_EMPTY_3
 	};
 	enum DIO_PORTS
 	{
-		DIO_LIMIT_SWITCH_ELEVATOR_MAX = 1,
+		DIO_LIMIT_SWITCH_ELEVATOR_MAX = 0,
 		DIO_LIMIT_SWITCH_ELEVATOR_MIN,
 		DIO_LIMIT_SWITCH_ARMS_MAX,
 		DIO_LIMIT_SWITCH_ARMS_MIN,
+		DIO_EMPTY_4,
 		DIO_EMPTY_5,
 		DIO_EMPTY_6,
 		DIO_EMPTY_7,
 		DIO_EMPTY_8,
-		DIO_EMPTY_9,
-		DIO_EMPTY_10,
-		DIO_EMPTY_11,
-		DIO_EMPTY_12,
-		DIO_EMPTY_13,
-		DIO_EMPTY_14
+		DIO_EMPTY_9
 	};
-	enum SOLENOID_PORTS
+	enum PCM_SOLENOID_PORTS
 	{
-		SOLENOID_EMPTY_1 =1,
-		SOLENOID_EMPTY_2,
-		SOLENOID_EMPTY_3,
-		SOLENOID_EMPTY_4,
-		SOLENOID_EMPTY_5,
-		SOLENOID_EMPTY_6,
-		SOLENOID_EMPTY_7,
-		SOLENOID_EMPTY_8
+		PCM_DOUBLE_SOLENOID1 = 0,
+		PCM_DOUBLE_SOLENOID2,
+		PCM_EMPTY_2,
+		PCM_EMPTY_3,
+		PCM_EMPTY_4,
+		PCM_EMPTY_5,
+		PCM_EMPTY_6,
+		PCM_EMPTY_7
 	};
 	enum JOYSTICK_ID
 	{
@@ -96,21 +86,22 @@ private:
 		bool Button4Pressed;		//
 		bool Button5Pressed;		//
 		bool Button6Pressed;		//
-		bool Button7Pressed;		//
-		bool Button8Pressed;		//
-		bool Button9Pressed;		//
-		bool Button10Pressed;		//
-		bool Button11Pressed;		//
-		bool YForwardPresses;		//
+		bool Button7Pressed;		//	Camera Pan
+		bool Button8Pressed;		//	Camera Pan
+		bool Button9Pressed;		//	Camera Tilt Down
+		bool Button10Pressed;		//	Camera Tilt	Up		Solenoids
+		bool Button11Pressed;		//	Elevator?			Solenoids
+		bool Button12Pressed;		//	Elevator?			Solenoids
 		bool YForwardPressed;		//	Elevator Up
 		bool YReversePressed;		//	Elevator Down
-		bool Axis5Forward;			//	Camera Down?
-		bool Axis5Backward;			//	Camera Up?
-		bool Axis6Forward;			//	Camera Right?
-		bool Axis6Backward;			//	Camera Left?
 	};
 
 	RobotDrive driveSystem;
+	CANTalon rightFrontDriveTalon, leftFrontDriveTalon, rightReardriveTalon, leftRearDriveTalon;
+
+	Compressor compressor;
+
+	DoubleSolenoid solenoids;
 
 	Joystick driverStick;
 	Joystick driverStick2;
@@ -159,7 +150,13 @@ private:
 
 public:
 	Robot() :
-		driveSystem(PWM_TALON_RIGHT_FRONT,PWM_TALON_LEFT_FRONT,PWM_TALON_RIGHT_REAR,PWM_TALON_LEFT_REAR),
+		driveSystem(rightFrontDriveTalon, leftFrontDriveTalon, rightReardriveTalon, leftRearDriveTalon),
+		rightFrontDriveTalon(CAN_TALON_RIGHT_FRONT),
+		leftFrontDriveTalon(CAN_TALON_LEFT_FRONT),
+		rightReardriveTalon(CAN_TALON_RIGHT_REAR),
+		leftRearDriveTalon(CAN_TALON_LEFT_REAR),
+		compressor(CAN_PNUEMATIC_CONTROL_MODULE),
+		solenoids(PCM_DOUBLE_SOLENOID1, PCM_DOUBLE_SOLENOID2),
 		driverStick(JOYSTICK_1),
 		driverStick2(JOYSTICK_2),
 		controlStick(JOYSTICK_3),
@@ -179,6 +176,61 @@ public:
 		driveSystem.SetExpiration(0.1);
 
 		//printf("Matt Cassin is Awesome!");
+	}
+	void initSolenoids()
+	{
+		compressor.SetClosedLoopControl(true);
+
+	}
+	void checkSolenoidButtons()
+	{
+		if (driverStick.GetRawButton(11))
+		{
+			if (!driverState.Button11Pressed)
+			{
+				driverState.Button11Pressed = true;
+				solenoids.Set(DoubleSolenoid::kForward);
+			}
+		}
+		else
+		{
+			if (driverState.Button11Pressed)
+			{
+				driverState.Button11Pressed = false;
+			}
+		}
+
+		if (driverStick.GetRawButton(10))
+		{
+			if (driverState.Button10Pressed == false)
+			{
+				driverState.Button10Pressed = true;
+				solenoids.Set(DoubleSolenoid::kOff);
+			}
+		}
+		else
+		{
+			if (driverState.Button10Pressed)
+			{
+				driverState.Button10Pressed = false;
+			}
+		}
+
+		if (driverStick.GetRawButton(12))
+		{
+			if (driverState.Button12Pressed == false)
+			{
+				driverState.Button12Pressed = true;
+				solenoids.Set(DoubleSolenoid::kReverse);
+			}
+		}
+		else
+		{
+			if (driverState.Button12Pressed)
+			{
+				driverState.Button12Pressed = false;
+			}
+		}
 	}
 	void initCamera()
 	{
@@ -287,9 +339,9 @@ public:
 	{
 		if (controlStick.GetRawButton(12))
 		{
-			if (!controlState.YForwardPresses)
+			if (!controlState.YForwardPressed)
 			{
-				controlState.YForwardPresses = true;
+				controlState.YForwardPressed = true;
 
 				if (!elevatorIsRunningUp)
 				{
@@ -300,9 +352,9 @@ public:
 		}
 		else
 		{
-			if (controlState.YForwardPresses)
+			if (controlState.YForwardPressed)
 			{
-				controlState.YForwardPresses = false;
+				controlState.YForwardPressed = false;
 				if (elevatorIsRunningUp)
 				{
 					elevatorIsRunningUp = false;
@@ -434,67 +486,6 @@ public:
 			SmartDashboard::PutString("DB/String 3", "11 OFF");
 		}
 	}
-	void initArms()
-	{
-		armsIsRunningUp = 0;
-		armsIsRunningDown = 0;
-		arms.Set(0.0);
-	}
-	void checkArmsButtons()
-	{
-		if (controlStick.GetRawButton(1))
-		{
-			if (!controlState.TriggerPressed)
-			{
-				controlState.TriggerPressed = true;
-
-				if (!armsIsRunningUp)
-				{
-					armsIsRunningUp = true;
-					arms.Set(ARMS_SPEED);
-				}
-			}
-		}
-		else
-		{
-			if (controlState.TriggerPressed)
-			{
-				controlState.TriggerPressed = false;
-
-				if (armsIsRunningUp)
-				{
-					armsIsRunningUp = false;
-					arms.Set(0.0);
-				}
-			}
-		}
-		if (controlStick.GetRawButton(2))
-		{
-			if (!controlState.Button2Pressed)
-			{
-				controlState.Button2Pressed = true;
-
-				if (!armsIsRunningDown)
-				{
-					armsIsRunningDown = true;
-					arms.Set(ARMS_SPEED * -1);
-				}
-			}
-		}
-		else
-		{
-			if (controlState.Button2Pressed)
-			{
-				controlState.Button2Pressed = false;
-
-				if (armsIsRunningDown)
-				{
-					armsIsRunningDown = false;
-					arms.Set(0.0);
-				}
-			}
-		}
-	}
 	void initLimits()
 	{
 		elevatorMaxNewLimit = elevatorMaxLimitSwitch.Get();
@@ -528,24 +519,6 @@ public:
 			elevator.Set(0.0);
 		}
 		elevatorMinOldLimit = elevatorMinNewLimit;
-
-		armsMaxNewLimit = armsMaxLimitSwitch.Get();
-		if(armsMaxOldLimit == 0 && armsMaxNewLimit == 1)
-		{
-			armsIsRunningUp = false;
-			armsIsRunningDown = false;
-			arms.Set(0.0);
-		}
-		armsMaxOldLimit = armsMaxNewLimit;
-
-		armsMinNewLimit = armsMinLimitSwitch.Get();
-		if(armsMinOldLimit == 0 && armsMinNewLimit == 1)
-		{
-			armsIsRunningUp = false;
-			armsIsRunningDown = false;
-			arms.Set(0.0);
-		}
-		armsMinOldLimit = armsMinNewLimit;
 	}
 	float SignSquare(float f)
 	{
@@ -581,14 +554,8 @@ public:
 		Wait(0.005);
 
 		initElevator();
-		initArms();
 		initCamera();
 		initLimits();
-
-		//SmartDashboard::PutString("DB/String 6", "MyRobot -- LEFT Front %d\n", PWM_TALON_LEFT_FRONT);
-		//SmartDashboard::PutString("DB/String 7", "MyRobot -- RIGHT Front %d\n", PWM_TALON_RIGHT_FRONT);
-		//SmartDashboard::PutString("DB/String 8", "MyRobot -- LEFT Rear %d\n", PWM_TALON_LEFT_REAR);
-		//SmartDashboard::PutString("DB/String 9", "MyRobot -- RIGHT Rear %d\n", PWM_TALON_RIGHT_REAR);
 
 		while (IsOperatorControl() && IsEnabled())
 		{
@@ -600,7 +567,6 @@ public:
 			Wait(0.005);
 
 			checkElevatorAxis();
-			checkArmsButtons();
 			checkCameraTiltButtons();
 			checkCameraPanButtons();
 			checkLimits();
