@@ -97,7 +97,7 @@ private:
 	};
 
 	RobotDrive driveSystem;
-	CANTalon rightFrontDriveTalon, leftFrontDriveTalon, rightReardriveTalon, leftRearDriveTalon;
+	CANTalon rightFrontDriveTalon, leftFrontDriveTalon, rightRearDriveTalon, leftRearDriveTalon;
 
 	Compressor compressor;
 
@@ -148,12 +148,16 @@ private:
 	const float ELEVATOR_SPEED_DOWN = -0.25;
 	const float ARMS_SPEED = 0.5;
 
+	int autoCode = 1;
+	const float AUTO_FORWARD = 12.0;
+	double dashData;
+
 public:
 	Robot() :
-		driveSystem(rightFrontDriveTalon, leftFrontDriveTalon, rightReardriveTalon, leftRearDriveTalon),
+		driveSystem(leftFrontDriveTalon, leftRearDriveTalon, rightFrontDriveTalon, rightRearDriveTalon),
 		rightFrontDriveTalon(CAN_TALON_RIGHT_FRONT),
 		leftFrontDriveTalon(CAN_TALON_LEFT_FRONT),
-		rightReardriveTalon(CAN_TALON_RIGHT_REAR),
+		rightRearDriveTalon(CAN_TALON_RIGHT_REAR),
 		leftRearDriveTalon(CAN_TALON_LEFT_REAR),
 		compressor(CAN_PNUEMATIC_CONTROL_MODULE),
 		solenoids(PCM_DOUBLE_SOLENOID1, PCM_DOUBLE_SOLENOID2),
@@ -174,6 +178,8 @@ public:
 		//SmartDashboard::PutString("DB/String 2", "FRC Team 2501");
 
 		driveSystem.SetExpiration(0.1);
+		driveSystem.SetInvertedMotor(RobotDrive::kFrontRightMotor, true);
+		driveSystem.SetInvertedMotor(RobotDrive::kRearRightMotor, true);
 
 		//printf("Matt Cassin is Awesome!");
 	}
@@ -544,9 +550,31 @@ public:
 	}
 	void Autonomous()
 	{
-		driveSystem.SetSafetyEnabled(false);
+		dashData = SmartDashboard::GetNumber("DB/Slider 0", 1.0);
 		driveSystem.MecanumDrive_Cartesian(0,0,0);
-		Wait(2.0);
+		if(autoCode == 0)
+		{
+			Wait(15.0);
+		}
+		else if(autoCode == 1)
+		{
+			driveSystem.MecanumDrive_Cartesian(0,-0.5,0);
+			Wait(15.0);
+		}
+		else if(autoCode == 2)
+		{
+			solenoids.Set(DoubleSolenoid::kForward);		//Open
+			Wait(1.0);
+			solenoids.Set(DoubleSolenoid::kReverse);		//Close
+			Wait(1.0);
+			driveSystem.MecanumDrive_Cartesian(0,-0.5,0);
+			Wait(AUTO_FORWARD);
+		}
+		else
+		{
+			SmartDashboard::PutString("DB/String 0", "Invalid AUTO_CODE");
+		}
+		driveSystem.MecanumDrive_Cartesian(0,0,0);
 	}
 	void OperatorControl()
 	{
