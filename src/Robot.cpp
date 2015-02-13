@@ -1,5 +1,7 @@
 #include "WPILib.h"
+#include<string.h>
 #include <time.h>
+#include<iostream>
 
 /**
  * 2501's 2015 Robot Code
@@ -7,7 +9,8 @@
  * Tyler Seiford
  * Tim Larson
  * Jacob Ozel
- * Kyle Ronsberg [Captain]
+ * Captain:
+ * Kyle Ronsberg
  */
 
 class Robot: public SampleRobot
@@ -29,7 +32,7 @@ private:
 		PWM_EMPTY_4,
 		PWM_TALON_ELEVATOR,
 		PWM_TALON_ARMS,
-		PWN_EPMTY_7,
+		PWN_EMPTY_7,
 		PWM_SERVO_CAMERA_PAN,
 		PWM_SERVO_CAMERA_TILT
 	};
@@ -63,9 +66,9 @@ private:
 	};
 	enum PCM_SOLENOID_PORTS
 	{
-		PCM_DOUBLE_SOLENOID1 = 0,
+		PCM_EMPTY_0 = 0,
+		PCM_DOUBLE_SOLENOID1,
 		PCM_DOUBLE_SOLENOID2,
-		PCM_EMPTY_2,
 		PCM_EMPTY_3,
 		PCM_EMPTY_4,
 		PCM_EMPTY_5,
@@ -125,32 +128,33 @@ private:
 	DigitalInput elevatorMinLimitSwitch;
 	bool elevatorMinLimitSwitchIsOpen;
 
-	DigitalInput armsMaxLimitSwitch;
-	bool armsMaxLimitSwitchIsOpen;
-
-	DigitalInput armsMinLimitSwitch;
-	bool armsMinLimitSwitchIsOpen;
-
-	int elevatorMaxOldLimit, elevatorMaxNewLimit, elevatorMinNewLimit, elevatorMinOldLimit, armsMaxOldLimit, armsMaxNewLimit, armsMinOldLimit, armsMinNewLimit;	//UINT32
-
-	float cameraTiltAngle;
-	float cameraTiltMinAngle = 0.0;
-	float cameraTiltMaxAngle = 180.0;
-	Servo cameraTilt;
-
-	float cameraPanAngle;
-	float cameraPanMinAngle = 0.0;
-	float cameraPanMaxAngle = 180.0;
-	Servo cameraPan;
+	int elevatorMaxOldLimit, elevatorMaxNewLimit, elevatorMinNewLimit, elevatorMinOldLimit;	//UINT32
 
 	const float SPIN_SPEED = 0.5;
 	const float ELEVATOR_SPEED_UP = 0.5;
 	const float ELEVATOR_SPEED_DOWN = -0.25;
 	const float ARMS_SPEED = 0.5;
+	const float ELEVATOR_NEUTRAL = 0.05;
+	const float DRIVE_SPEED = 1.0;													//Only Change for kids :P
 
-	int autoCode = 1;
-	const float AUTO_FORWARD = 12.0;
-	double dashData;
+	const float AUTO_ELEVATOR_UP = -0.5;
+
+	const int autoCode = 2;//				0 = Nothing		1 = Drive Forward		2 = Use below numbers for ADVANCED_AUTO
+
+	//                                      ADVANCED_AUTO
+	//---------------------------------------------------------------------------------------------------------------------
+	//										Open Arms & Drive Forward
+	const float AUTO_FORWARD =				1.0;
+	//										Stop, Close Arms
+	const float AUTO_ARMS_OPEN = 			1.0;
+	//										Move Elevator Up
+	const float AUTO_ELEVATOR =				1.0;
+	//										Turn											Tune
+	const float AUTO_TURN =					0.6;
+	//										Pause for a sec
+	const float AUTO_WAIT =					0.5;
+	//										Drive Forward into Auto Zone					Tune
+	const float AUTO_FORWARD_2 =			1.0;
 
 public:
 	Robot() :
@@ -167,171 +171,66 @@ public:
 		elevator(PWM_TALON_ELEVATOR),
 		arms(PWM_TALON_ARMS),
 		elevatorMaxLimitSwitch(DIO_LIMIT_SWITCH_ELEVATOR_MAX),
-		elevatorMinLimitSwitch(DIO_LIMIT_SWITCH_ELEVATOR_MIN),
-		armsMaxLimitSwitch(DIO_LIMIT_SWITCH_ARMS_MAX),
-		armsMinLimitSwitch(DIO_LIMIT_SWITCH_ARMS_MIN),
-		cameraTilt(PWM_SERVO_CAMERA_TILT),
-		cameraPan(PWM_SERVO_CAMERA_PAN)
-	{
-		//SmartDashboard::PutString("DB/String 0", "(: Hello World! :)");
-		//SmartDashboard::PutString("DB/String 1", "Written by: ");
-		//SmartDashboard::PutString("DB/String 2", "FRC Team 2501");
-
+		elevatorMinLimitSwitch(DIO_LIMIT_SWITCH_ELEVATOR_MIN)
+{
 		driveSystem.SetExpiration(0.1);
 		driveSystem.SetInvertedMotor(RobotDrive::kFrontRightMotor, true);
 		driveSystem.SetInvertedMotor(RobotDrive::kRearRightMotor, true);
 
-		//printf("Matt Cassin is Awesome!");
+		CameraServer::GetInstance()->SetQuality(50);
+		CameraServer::GetInstance()->StartAutomaticCapture("cam0");
 	}
 	void initSolenoids()
 	{
 		compressor.SetClosedLoopControl(true);
-
 	}
 	void checkSolenoidButtons()
 	{
-		if (driverStick.GetRawButton(11))
+		if (controlStick.GetRawButton(1))
 		{
-			if (!driverState.Button11Pressed)
+			if (!controlState.TriggerPressed)
 			{
-				driverState.Button11Pressed = true;
+				controlState.TriggerPressed = true;
 				solenoids.Set(DoubleSolenoid::kForward);
 			}
 		}
 		else
 		{
-			if (driverState.Button11Pressed)
+			if (controlState.TriggerPressed)
 			{
-				driverState.Button11Pressed = false;
+				controlState.TriggerPressed = false;
 			}
 		}
 
-		if (driverStick.GetRawButton(10))
+		if (controlStick.GetRawButton(3))
 		{
-			if (driverState.Button10Pressed == false)
+			if (controlState.Button3Pressed == false)
 			{
-				driverState.Button10Pressed = true;
+				controlState.Button3Pressed = true;
 				solenoids.Set(DoubleSolenoid::kOff);
 			}
 		}
 		else
 		{
-			if (driverState.Button10Pressed)
+			if (controlState.Button3Pressed)
 			{
-				driverState.Button10Pressed = false;
+				controlState.Button3Pressed = false;
 			}
 		}
 
-		if (driverStick.GetRawButton(12))
+		if (controlStick.GetRawButton(2))
 		{
-			if (driverState.Button12Pressed == false)
+			if (controlState.Button2Pressed == false)
 			{
-				driverState.Button12Pressed = true;
+				controlState.Button2Pressed = true;
 				solenoids.Set(DoubleSolenoid::kReverse);
 			}
 		}
 		else
 		{
-			if (driverState.Button12Pressed)
+			if (controlState.Button2Pressed)
 			{
-				driverState.Button12Pressed = false;
-			}
-		}
-	}
-	void initCamera()
-	{
-
-		cameraTiltAngle = 90;
-		cameraTilt.SetAngle(cameraTiltAngle);
-
-		cameraPanAngle = 90;
-		cameraPan.SetAngle(cameraPanAngle);
-	}
-	void checkCameraTiltButtons()
-	{
-		if (controlStick.GetRawButton(9)) // tilt down
-		{
-			if (!controlState.Button9Pressed)
-			{
-				controlState.Button9Pressed = true;
-				if (cameraTiltAngle != cameraTiltMinAngle)
-				{
-					cameraTiltAngle -= 10;
-					if (cameraTiltAngle < cameraTiltMinAngle) cameraTiltAngle = cameraTiltMinAngle;
-
-					cameraTilt.SetAngle(cameraTiltAngle);
-				}
-			}
-		}
-		else
-		{
-			if (controlState.Button9Pressed)
-			{
-				controlState.Button9Pressed = false;
-			}
-		}
-		if (controlStick.GetRawButton(10)) // tilt up
-		{
-			if (!controlState.Button10Pressed)
-			{
-				controlState.Button10Pressed = true;
-				if (cameraTiltAngle != cameraTiltMaxAngle)
-				{
-					cameraTiltAngle += 10;
-					if (cameraTiltAngle > cameraTiltMaxAngle) cameraTiltAngle = cameraTiltMaxAngle;
-						cameraTilt.SetAngle(cameraTiltAngle);
-				}
-			}
-		}
-		else
-		{
-			if (controlState.Button10Pressed)
-			{
-				controlState.Button10Pressed = false;
-			}
-		}
-	}
-	void checkCameraPanButtons()
-	{
-		if (controlStick.GetRawButton(7)) // Pan down
-		{
-			if (!controlState.Button7Pressed)
-			{
-				controlState.Button7Pressed = true;
-				if (cameraPanAngle != cameraPanMinAngle)
-				{
-					cameraPanAngle -= 10;
-					if (cameraPanAngle < cameraPanMinAngle) cameraPanAngle = cameraPanMinAngle;
-
-					cameraPan.SetAngle(cameraPanAngle);
-				}
-			}
-		}
-		else
-		{
-			if (controlState.Button7Pressed)
-			{
-				controlState.Button7Pressed = false;
-			}
-		}
-		if (controlStick.GetRawButton(8)) // Pan up
-		{
-			if (!controlState.Button8Pressed)
-			{
-				controlState.Button8Pressed = true;
-				if (cameraPanAngle != cameraPanMaxAngle)
-				{
-					cameraPanAngle += 10;
-					if (cameraPanAngle > cameraPanMaxAngle) cameraPanAngle = cameraPanMaxAngle;
-						cameraPan.SetAngle(cameraPanAngle);
-				}
-			}
-		}
-		else
-		{
-			if (controlState.Button8Pressed)
-			{
-				controlState.Button8Pressed = false;
+				controlState.Button2Pressed = false;
 			}
 		}
 	}
@@ -398,11 +297,11 @@ public:
 	{
 		if (f < 0)
 		{
-			return -0.5 * f * f;
+			return (0.5 * f * f) + ELEVATOR_NEUTRAL;
 		}
 		else
 		{
-			return f * f;
+			return (-1 * f * f) + ELEVATOR_NEUTRAL;
 		}
 	}
 	void checkElevatorAxis()
@@ -433,7 +332,7 @@ public:
 				}
 			}
 		}
-		if (elevatorNum > 0.04)
+		if (elevatorNum < -0.04)
 		{
 			if (!controlState.YReversePressed)
 			{
@@ -457,41 +356,7 @@ public:
 			}
 		}
 	}
-	void debug()
-	{
-		if(elevatorIsRunningDown)
-		{
-			SmartDashboard::PutString("DB/String 0", "DOWN TRUE");
-		}
-		else
-		{
-			SmartDashboard::PutString("DB/String 0", "DOWN FALSE");
-		}
-		if(elevatorIsRunningUp)
-		{
-			SmartDashboard::PutString("DB/String 1", "UP TRUE");
-		}
-		else
-		{
-			SmartDashboard::PutString("DB/String 1", "UP FALSE");
-		}
-		if(controlStick.GetRawButton(12))
-		{
-			SmartDashboard::PutString("DB/String 2", "12 ON");
-		}
-		else
-		{
-			SmartDashboard::PutString("DB/String 2", "12 OFF");
-		}
-		if(controlStick.GetRawButton(11))
-		{
-			SmartDashboard::PutString("DB/String 3", "11 ON");
-		}
-		else
-		{
-			SmartDashboard::PutString("DB/String 3", "11 OFF");
-		}
-	}
+	void debug() {}
 	void initLimits()
 	{
 		elevatorMaxNewLimit = elevatorMaxLimitSwitch.Get();
@@ -499,12 +364,6 @@ public:
 
 		elevatorMinNewLimit = elevatorMinLimitSwitch.Get();
 		elevatorMinOldLimit = elevatorMinNewLimit;
-
-		armsMaxNewLimit = armsMaxLimitSwitch.Get();
-		armsMaxOldLimit = armsMaxNewLimit;
-
-		armsMinNewLimit = armsMinLimitSwitch.Get();
-		armsMinOldLimit = armsMinNewLimit;
 	}
 	void checkLimits()
 	{
@@ -530,59 +389,100 @@ public:
 	{
 		if (f < 0)
 		{
-			return -1.0 * f * f;
+			return -1.0 * f * f * DRIVE_SPEED;
 		}
 		else
 		{
-			return f * f;
+			return f * f * DRIVE_SPEED;
 		}
 	}
 	float SignSpin(float f)
 	{
 		if (f < 0)
 		{
-			return -1.0 * f * f * SPIN_SPEED;
+			return -1.0 * f * f * SPIN_SPEED * DRIVE_SPEED;
 		}
 		else
 		{
-			return f * f * SPIN_SPEED;
+			return f * f * SPIN_SPEED * DRIVE_SPEED;
 		}
 	}
 	void Autonomous()
 	{
-		dashData = SmartDashboard::GetNumber("DB/Slider 0", 1.0);
+		driveSystem.SetSafetyEnabled(false);
+		Wait(0.005);
+
+		float auto_time = 0.005;
+
 		driveSystem.MecanumDrive_Cartesian(0,0,0);
 		if(autoCode == 0)
 		{
+			SmartDashboard::PutString("DB/String 0", "AUTO_CODE: 0");
 			Wait(15.0);
+			auto_time += 15;
 		}
 		else if(autoCode == 1)
 		{
+			SmartDashboard::PutString("DB/String 0", "AUTO_CODE: 1");
 			driveSystem.MecanumDrive_Cartesian(0,-0.5,0);
-			Wait(15.0);
+			Wait(AUTO_FORWARD_2);
+			auto_time += AUTO_FORWARD_2;
 		}
 		else if(autoCode == 2)
 		{
-			solenoids.Set(DoubleSolenoid::kForward);		//Open
-			Wait(1.0);
-			solenoids.Set(DoubleSolenoid::kReverse);		//Close
-			Wait(1.0);
-			driveSystem.MecanumDrive_Cartesian(0,-0.5,0);
+			SmartDashboard::PutString("DB/String 0", "ADVANCED_AUTO");
+			SmartDashboard::PutString("DB/String 1", "ACTIVE");
+
+			driveSystem.MecanumDrive_Cartesian(0,-0.5,0);							//Forward + Open Arms
+			solenoids.Set(DoubleSolenoid::kReverse);
 			Wait(AUTO_FORWARD);
+			auto_time += AUTO_FORWARD;
+
+			driveSystem.MecanumDrive_Cartesian(0,0,0);								//Stop + Close Arms
+			solenoids.Set(DoubleSolenoid::kForward);
+			Wait(AUTO_ARMS_OPEN);
+			auto_time += AUTO_ARMS_OPEN;
+
+			elevator.Set(AUTO_ELEVATOR_UP);											//Elevator up a bit
+			Wait(AUTO_ELEVATOR);
+			auto_time += AUTO_ELEVATOR;
+
+			elevator.Set(ELEVATOR_NEUTRAL);											//Set Elevator to Neutral
+			driveSystem.MecanumDrive_Cartesian(0,0,0.5);							//Turn to face the AUTO_ZONE
+			Wait(AUTO_TURN);
+			auto_time += AUTO_TURN;
+
+			driveSystem.MecanumDrive_Cartesian(0,0,0);								//Pause for a sec
+			Wait(AUTO_WAIT);
+			auto_time += AUTO_WAIT;
+
+			driveSystem.MecanumDrive_Cartesian(0,-0.5,0);							//Drive into AUTO_ZONE
+			Wait(AUTO_FORWARD_2);
+			auto_time += AUTO_FORWARD_2;
+
+			driveSystem.MecanumDrive_Cartesian(0,0,0);								//Stop in AUTO_ZONE
 		}
 		else
 		{
 			SmartDashboard::PutString("DB/String 0", "Invalid AUTO_CODE");
 		}
+
 		driveSystem.MecanumDrive_Cartesian(0,0,0);
+
+		while (IsAutonomous() && IsEnabled() && auto_time < 15.0)					//Wait for the remainder of AUTONOMOUS
+		{
+			Wait(1.0);
+			auto_time += 1;
+		}
+
 	}
 	void OperatorControl()
 	{
-		driveSystem.SetSafetyEnabled(true);
+		driveSystem.SetSafetyEnabled(false);
 		Wait(0.005);
 
 		initElevator();
-		initCamera();
+		initSolenoids();
 		initLimits();
 
 		while (IsOperatorControl() && IsEnabled())
@@ -595,8 +495,7 @@ public:
 			Wait(0.005);
 
 			checkElevatorAxis();
-			checkCameraTiltButtons();
-			checkCameraPanButtons();
+			checkSolenoidButtons();
 			checkLimits();
 		}
 	}
