@@ -139,22 +139,24 @@ private:
 
 	const float AUTO_ELEVATOR_UP = -0.5;
 
-	const int autoCode = 2;//				0 = Nothing		1 = Drive Forward		2 = Use below numbers for ADVANCED_AUTO
+	const float AJ_AUTO_FORWARD = 2.0;
+
+	const int autoCode = 3;//				0 = Nothing		1 = Drive Forward		2 = Use below numbers for ADVANCED_AUTO		3 = AntiJerk_AUTO
 
 	//                                      ADVANCED_AUTO
 	//---------------------------------------------------------------------------------------------------------------------
 	//										Open Arms & Drive Forward
-	const float AUTO_FORWARD =				1.0;
+	const float ADV_AUTO_FORWARD =				1.0;
 	//										Stop, Close Arms
-	const float AUTO_ARMS_OPEN = 			1.0;
+	const float ADV_AUTO_ARMS_OPEN = 			1.0;
 	//										Move Elevator Up
-	const float AUTO_ELEVATOR =				1.0;
+	const float ADV_AUTO_ELEVATOR =				1.0;
 	//										Turn											Tune
-	const float AUTO_TURN =					0.6;
+	const float ADV_AUTO_TURN =					0.6;
 	//										Pause for a sec
-	const float AUTO_WAIT =					0.5;
+	const float ADV_AUTO_WAIT =					0.5;
 	//										Drive Forward into Auto Zone					Tune
-	const float AUTO_FORWARD_2 =			1.0;
+	const float ADV_AUTO_FORWARD_2 =			1.0;
 
 public:
 	Robot() :
@@ -174,6 +176,7 @@ public:
 		elevatorMinLimitSwitch(DIO_LIMIT_SWITCH_ELEVATOR_MIN)
 {
 		driveSystem.SetExpiration(0.1);
+		driveSystem.SetSafetyEnabled(false);
 		driveSystem.SetInvertedMotor(RobotDrive::kFrontRightMotor, true);
 		driveSystem.SetInvertedMotor(RobotDrive::kRearRightMotor, true);
 
@@ -239,59 +242,6 @@ public:
 		elevatorIsRunningUp = 0;
 		elevatorIsRunningDown = 0;
 		elevator.Set(0.0);
-	}
-	void checkElevatorButtons()
-	{
-		if (controlStick.GetRawButton(12))
-		{
-			if (!controlState.YForwardPressed)
-			{
-				controlState.YForwardPressed = true;
-
-				if (!elevatorIsRunningUp)
-				{
-					elevatorIsRunningUp = true;
-					elevator.Set(ELEVATOR_SPEED_UP);
-				}
-			}
-		}
-		else
-		{
-			if (controlState.YForwardPressed)
-			{
-				controlState.YForwardPressed = false;
-				if (elevatorIsRunningUp)
-				{
-					elevatorIsRunningUp = false;
-					elevator.Set(0.0);
-				}
-			}
-		}
-		if (controlStick.GetRawButton(11))
-		{
-			if (!controlState.Button11Pressed)
-			{
-				controlState.Button11Pressed = true;
-
-				if (!elevatorIsRunningDown)
-				{
-					elevatorIsRunningDown = true;
-					elevator.Set(ELEVATOR_SPEED_DOWN);
-				}
-			}
-		}
-		else
-		{
-			if (controlState.Button11Pressed)
-			{
-				controlState.Button11Pressed = false;
-				if (elevatorIsRunningDown)
-				{
-					elevatorIsRunningDown = false;
-					elevator.Set(0.0);
-				}
-			}
-		}
 	}
 	float SignElevator(float f)
 	{
@@ -425,8 +375,8 @@ public:
 		{
 			SmartDashboard::PutString("DB/String 0", "AUTO_CODE: 1");
 			driveSystem.MecanumDrive_Cartesian(0,-0.5,0);
-			Wait(AUTO_FORWARD_2);
-			auto_time += AUTO_FORWARD_2;
+			Wait(ADV_AUTO_FORWARD_2);
+			auto_time += ADV_AUTO_FORWARD_2;
 		}
 		else if(autoCode == 2)
 		{
@@ -435,32 +385,63 @@ public:
 
 			driveSystem.MecanumDrive_Cartesian(0,-0.5,0);							//Forward + Open Arms
 			solenoids.Set(DoubleSolenoid::kReverse);
-			Wait(AUTO_FORWARD);
-			auto_time += AUTO_FORWARD;
+			Wait(ADV_AUTO_FORWARD);
+			auto_time += ADV_AUTO_FORWARD;
 
 			driveSystem.MecanumDrive_Cartesian(0,0,0);								//Stop + Close Arms
 			solenoids.Set(DoubleSolenoid::kForward);
-			Wait(AUTO_ARMS_OPEN);
-			auto_time += AUTO_ARMS_OPEN;
+			Wait(ADV_AUTO_ARMS_OPEN);
+			auto_time += ADV_AUTO_ARMS_OPEN;
 
 			elevator.Set(AUTO_ELEVATOR_UP);											//Elevator up a bit
-			Wait(AUTO_ELEVATOR);
-			auto_time += AUTO_ELEVATOR;
+			Wait(ADV_AUTO_ELEVATOR);
+			auto_time += ADV_AUTO_ELEVATOR;
 
 			elevator.Set(ELEVATOR_NEUTRAL);											//Set Elevator to Neutral
 			driveSystem.MecanumDrive_Cartesian(0,0,0.5);							//Turn to face the AUTO_ZONE
-			Wait(AUTO_TURN);
-			auto_time += AUTO_TURN;
+			Wait(ADV_AUTO_TURN);
+			auto_time += ADV_AUTO_TURN;
 
 			driveSystem.MecanumDrive_Cartesian(0,0,0);								//Pause for a sec
-			Wait(AUTO_WAIT);
-			auto_time += AUTO_WAIT;
+			Wait(ADV_AUTO_WAIT);
+			auto_time += ADV_AUTO_WAIT;
 
 			driveSystem.MecanumDrive_Cartesian(0,-0.5,0);							//Drive into AUTO_ZONE
-			Wait(AUTO_FORWARD_2);
-			auto_time += AUTO_FORWARD_2;
+			Wait(ADV_AUTO_FORWARD_2);
+			auto_time += ADV_AUTO_FORWARD_2;
 
 			driveSystem.MecanumDrive_Cartesian(0,0,0);								//Stop in AUTO_ZONE
+		}
+		else if(autoCode == 3)
+		{
+			SmartDashboard::PutString("DB/String 0", "AntiJerk_AUTO");
+			SmartDashboard::PutString("DB/String 1", "ACTIVE");
+
+			elevator.Set(-0.5);
+			Wait(0.25);
+			auto_time += 0.25;
+			elevator.Set(-0.07);
+
+			solenoids.Set(DoubleSolenoid::kForward);
+			Wait(1.0);
+			auto_time += 1;
+
+			elevator.Set(-0.5);
+			Wait(1.5);
+			auto_time += 1.5;
+			elevator.Set(-0.07);
+
+			driveSystem.MecanumDrive_Cartesian(0,0.75,0);							//Drive into AUTO_ZONE
+			Wait(AJ_AUTO_FORWARD);
+			auto_time += AJ_AUTO_FORWARD;
+
+			driveSystem.MecanumDrive_Cartesian(0,0,0);								//Pause for a sec
+			Wait(0.5);
+			auto_time += 0.5;
+
+			driveSystem.MecanumDrive_Cartesian(0,0,0.3);							//Turn to face the AUTO_ZONE
+			Wait(1.2);
+			auto_time += 1.2;
 		}
 		else
 		{
@@ -500,6 +481,5 @@ public:
 		}
 	}
 };
-
 START_ROBOT_CLASS(Robot);
 //THIS IS CODE SMART ONE
