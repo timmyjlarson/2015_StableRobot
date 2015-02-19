@@ -5,12 +5,6 @@
 
 /**
  * 2501's 2015 Robot Code
- * Written by:
- * Tyler Seiford
- * Tim Larson
- * Jacob Ozel
- * Captain:
- * Kyle Ronsberg
  */
 
 class Robot: public SampleRobot
