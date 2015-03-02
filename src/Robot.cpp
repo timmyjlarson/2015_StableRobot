@@ -1,10 +1,14 @@
 #include "WPILib.h"
-#include<string.h>
 #include <time.h>
-#include<iostream>
 
 /**
  * 2501's 2015 Robot Code
+ * Written by:
+ * Tyler Seiford
+ * Tim Larson
+ * Jacob Ozel
+ * Captain:
+ * Kyle Ronsberg
  */
 
 class Robot: public SampleRobot
@@ -135,7 +139,7 @@ private:
 
 	const float AJ_AUTO_FORWARD = 2.0;
 
-	const int autoCode = 3;//				0 = Nothing		1 = Drive Forward		2 = Use below numbers for ADVANCED_AUTO		3 = AntiJerk_AUTO
+	const int autoCode = 0;//				0 = Nothing		1 = Drive Forward		2 = Use below numbers for ADVANCED_AUTO		3 = AntiJerk_AUTO
 
 	//                                      ADVANCED_AUTO
 	//---------------------------------------------------------------------------------------------------------------------
@@ -408,8 +412,11 @@ public:
 		}
 		else if(autoCode == 3)
 		{
-			SmartDashboard::PutString("DB/String 0", "AntiJerk_AUTO");
+			SmartDashboard::PutString("DB/String 0", "Awesome_AUTO");
 			SmartDashboard::PutString("DB/String 1", "ACTIVE");
+
+			Wait(2.0);
+			auto_time += 2.0;
 
 			elevator.Set(-0.5);
 			Wait(0.25);
